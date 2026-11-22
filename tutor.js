@@ -354,7 +354,7 @@ export const PROBLEMS = [
     ],
     guides: {
       know: "What do you know about gravity? Does it make all objects speed up at the same rate, or different rates?",
-      smaller: 'Imagine two identical balls dropped together. They land together. Now tape them into one heavier object. Should that suddenly fall faster?',
+      smaller: 'Imagine dropping two identical balls side by side. Which one lands first? Now tape them into one object that is twice as heavy. Would joining them change how fast they fall?',
       picture: 'Picture both balls side by side, frame by frame, with no air. Does either one ever get ahead?',
     },
     explain: 'They land at the same time. Without air resistance, all objects fall with the same acceleration (about 9.8 m/s² near Earth), whatever their mass.',
@@ -391,6 +391,15 @@ const INJECTION = /\b(ignore|disregard|forget|override|bypass)\b.{0,40}\b(rules?
 const DEMAND = /\b(just|please|pls|can you|could you)?\s*(tell|give|show|say)\b.{0,15}\b(answer|solution|result)\b|\bjust tell me\b|\bwhat'?s the answer\b|\bwhat is the answer\b|\btell me (it|the answer)\b|\banswer (it|this) for me\b|\bskip (to|the) (the )?answer\b/;
 const STUCK = /\b(i don'?t know|dont know|idk|no idea|not sure|i'?m stuck|stuck|confused|i give up|lost)\b/;
 const HINT = /\b(hint|clue|help me|a tip|nudge)\b/;
+
+// Phrases that contain a negation word but still state a correct idea.
+const BENIGN_NEGATIONS = /\bnot as (dense|heavy)\b|\b(no|without) air( resistance)?\b|\b(does ?n't|does not|do ?n't|do not) matter\b|\bno matter\b|\bneither\b/g;
+const NEGATION = /\b(not|no|never|nope|nah)\b|n't\b/;
+
+/** True when an answer is negated ("they don't land at the same time"), so it can't be marked correct. */
+export function isNegated(text) {
+  return NEGATION.test(normalize(text).replace(BENIGN_NEGATIONS, ' '));
+}
 
 export function wordCount(text) {
   return (normalize(text).match(/[a-z0-9'/+×*=.-]+/g) || []).length;
@@ -586,7 +595,7 @@ export function respond(session, message) {
     const h = nextHint(problem, s);
     return result(`I can't switch off the think-first rule, but here's a hint: ${h.text}`, h.session);
   }
-  if (problem.check(t) && !isAnswerDemand(t)) {
+  if (problem.check(t) && !isAnswerDemand(t) && !isNegated(t)) {
     return result(`Correct! ${problem.explain}`, { ...s, state: STATES.SOLVED });
   }
   if (isAnswerDemand(t)) {

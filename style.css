@@ -355,7 +355,8 @@ a { color: var(--taupe-light); }
   padding: 0 14px;
   border-radius: 10px;
   background: var(--surface-2);
-  border: 1px solid var(--line-3);
+  /* taupe-line-2 gives the input edge 3:1 contrast against the card (WCAG 1.4.11). */
+  border: 1px solid var(--taupe-line-2);
   color: var(--silver-1);
   font-family: var(--sans);
   font-size: 1rem;
