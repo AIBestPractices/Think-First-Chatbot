@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Think First: an AI tutor that builds thinking</title>
+  <meta name="description" content="Think First is a science and math tutor chatbot that asks students to explain their thinking before it helps. A demonstration of AI as a tutor, not an answer machine.">
+  <meta name="theme-color" content="#0B0B0C">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Newsreader:ital,wght@0,500;1,400;1,500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <script type="module" src="script.js"></script>
+</head>
+<body>
+  <!-- Reusable robot drawings -->
+  <svg width="0" height="0" class="sr-only" aria-hidden="true" focusable="false">
+    <defs>
+      <symbol id="robot" viewBox="0 0 64 72">
+        <g fill="none" stroke="#C9CCD1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="32" y1="9" x2="32" y2="16"/>
+          <rect x="13" y="16" width="38" height="27" rx="8" fill="#151517"/>
+          <rect x="18" y="22" width="28" height="13" rx="6" fill="#0B0B0C"/>
+          <line x1="9" y1="26" x2="13" y2="26"/>
+          <line x1="51" y1="26" x2="55" y2="26"/>
+          <line x1="32" y1="43" x2="32" y2="48"/>
+          <rect x="18" y="48" width="28" height="20" rx="5" fill="#151517"/>
+          <line x1="18" y1="54" x2="11" y2="61"/>
+          <line x1="46" y1="54" x2="53" y2="61"/>
+        </g>
+        <circle cx="32" cy="7" r="3" fill="#A89888"/>
+        <circle cx="26" cy="28.5" r="2.2" fill="#D6CBBE"/>
+        <circle cx="38" cy="28.5" r="2.2" fill="#D6CBBE"/>
+        <rect x="25" y="56" width="14" height="3.5" rx="1.75" fill="#A89888"/>
+      </symbol>
+      <symbol id="robot-head" viewBox="0 0 48 44">
+        <g fill="none" stroke="#C9CCD1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="24" y1="8" x2="24" y2="13"/>
+          <rect x="6" y="13" width="36" height="27" rx="8" fill="#151517"/>
+          <rect x="11" y="19" width="26" height="13" rx="6" fill="#0B0B0C"/>
+        </g>
+        <circle cx="24" cy="6" r="3" fill="#A89888"/>
+        <circle cx="18.5" cy="25.5" r="2.2" fill="#D6CBBE"/>
+        <circle cx="29.5" cy="25.5" r="2.2" fill="#D6CBBE"/>
+      </symbol>
+    </defs>
+  </svg>
+
+  <a class="skip-link" href="#chat">Skip to the chatbot</a>
+
+  <header class="site-header">
+    <div class="wrap header-inner">
+      <a class="brand" href="#top" aria-label="Think First, back to top">
+        <svg class="brand-logo" aria-hidden="true" focusable="false"><use href="#robot-head"/></svg>
+        <span class="wordmark">Think First</span>
+      </a>
+      <nav aria-label="Main">
+        <ul class="nav-list">
+          <li><a href="#chat">Try it</a></li>
+          <li><a href="#how">How it works</a></li>
+          <li><a href="#why">Why it matters</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <main id="top">
+    <section class="hero wrap" aria-labelledby="hero-title">
+      <div class="hero-copy">
+        <h1 id="hero-title">Explain your thinking first. Then the robot helps.</h1>
+        <p class="lede">A science tutor that won't just hand over the answer. Tell it how you'd approach the problem, and it guides you the rest of the way.</p>
+        <a class="btn btn-primary" href="#chat" id="cta">Try the chatbot</a>
+        <figure class="hero-quote">
+          <svg class="hero-robot" aria-hidden="true" focusable="false"><use href="#robot"/></svg>
+          <blockquote>
+            <p>&ldquo;Before I answer: what's your approach?&rdquo;</p>
+          </blockquote>
+        </figure>
+      </div>
+
+      <div class="hero-chat">
+        <section class="chat-card" id="chat" aria-labelledby="chat-title" tabindex="-1">
+          <header class="chat-head">
+            <svg class="chat-icon" aria-hidden="true" focusable="false"><use href="#robot-head"/></svg>
+            <h2 id="chat-title">Think-First Robot</h2>
+            <span class="rule-chip">
+              <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" focusable="false">
+                <rect x="3" y="7" width="10" height="7" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.5"/>
+                <path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2" fill="none" stroke="currentColor" stroke-width="1.5"/>
+              </svg>
+              Think-first rule: ON
+            </span>
+          </header>
+
+          <div class="chat-log" id="chat-log" role="log" aria-live="polite" aria-relevant="additions" aria-label="Conversation with the Think-First Robot"></div>
+
+          <div class="guides">
+            <p class="guides-label" id="guides-label">Stuck? Try a guiding prompt:</p>
+            <div class="guide-row" role="group" aria-labelledby="guides-label">
+              <button type="button" class="pill" data-guide="What do I already know?">What do I already know?</button>
+              <button type="button" class="pill" data-guide="Can I try a smaller example?">Can I try a smaller example?</button>
+              <button type="button" class="pill" data-guide="What would a picture of this look like?">What would a picture of this look like?</button>
+            </div>
+          </div>
+
+          <form class="chat-form" id="chat-form" autocomplete="off">
+            <label for="chat-input" class="sr-only">Your message</label>
+            <input id="chat-input" name="message" type="text" maxlength="1000" placeholder="Explain your thinking first…" required>
+            <button type="submit" class="btn btn-primary btn-send" id="send-btn">Send</button>
+          </form>
+        </section>
+        <p class="status-line" id="status-line" role="status">Practice mode: built-in problems</p>
+      </div>
+    </section>
+
+    <section class="how wrap" id="how" aria-labelledby="how-title" tabindex="-1">
+      <h2 id="how-title" class="section-title">How it works</h2>
+      <ol class="steps">
+        <li class="step">
+          <span class="step-num" aria-hidden="true">01</span>
+          <h3>Ask a question</h3>
+          <p>Type any science or math question into the box.</p>
+        </li>
+        <li class="step">
+          <span class="step-num" aria-hidden="true">02</span>
+          <h3>Explain your thinking</h3>
+          <p>Say what you think and how you'd start. Until you do, the answer stays locked.</p>
+        </li>
+        <li class="step">
+          <span class="step-num" aria-hidden="true">03</span>
+          <h3>Get guided</h3>
+          <p>On the right track? You get an example to work through. Stuck? You get a hint instead of the answer.</p>
+        </li>
+      </ol>
+    </section>
+
+    <section class="why wrap" id="why" aria-labelledby="why-title" tabindex="-1">
+      <h2 id="why-title" class="section-title">Why this is a good way to use AI</h2>
+      <p class="section-sub">AI can help people learn, as long as it supports their thinking instead of replacing it.</p>
+      <div class="cards">
+        <article class="card">
+          <h3>A tutor, not an answer machine</h3>
+          <p>The robot only responds once you've shared your reasoning, so the work of thinking stays with you.</p>
+        </article>
+        <article class="card">
+          <h3>Hints before answers</h3>
+          <p>Guiding prompts help you find the next step yourself, so a mistake turns into learning instead of a dead end.</p>
+        </article>
+        <article class="card">
+          <h3>Understanding you keep</h3>
+          <p>Explaining your approach shows what you know and what's missing, and it makes the idea easier to remember.</p>
+        </article>
+        <article class="card">
+          <h3>Check it, don't just trust it</h3>
+          <p>The robot gives a small example you can verify yourself. Good AI use means checking answers instead of accepting them blindly.</p>
+        </article>
+      </div>
+
+      <div class="sources">
+        <h3>Sources</h3>
+        <ul>
+          <li>[ADD SOURCE 1: article or study on AI in education]</li>
+          <li>[ADD SOURCE 2: article or study on responsible AI use]</li>
+        </ul>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      <p>Made for [CLASS / ASSIGNMENT NAME] by [YOUR NAME]</p>
+    </div>
+  </footer>
+</body>
+</html>

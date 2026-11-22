@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Page not found · Think First</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Newsreader:wght@500&display=swap" rel="stylesheet">
+  <style>
+    /* Styles are inline: GitHub Pages serves this page at any missing path,
+       so a relative stylesheet link could point to the wrong folder. */
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100vh; display: grid; place-items: center;
+      background: #0B0B0C; color: #C9CCD1;
+      font-family: "Inter", system-ui, sans-serif; line-height: 1.6; padding: 24px 16px;
+    }
+    main { max-width: 34rem; text-align: center; }
+    svg { width: 88px; height: 99px; }
+    .code { font-family: "Newsreader", Georgia, serif; color: #A89888; font-size: 1.2rem; margin: 18px 0 4px; }
+    h1 { font-family: "Newsreader", Georgia, serif; font-weight: 500; color: #ECEDEF; font-size: 2.2rem; line-height: 1.2; margin: 0 0 12px; }
+    p { margin: 0 0 28px; color: #B4B8BF; }
+    a {
+      display: inline-flex; align-items: center; min-height: 44px; padding: 0 22px;
+      background: #E2E4E8; color: #0B0B0C; border-radius: 10px; font-weight: 600; text-decoration: none;
+    }
+    a:focus-visible { outline: 2px solid #D6CBBE; outline-offset: 3px; }
+  </style>
+</head>
+<body>
+  <main>
+    <svg viewBox="0 0 64 72" aria-hidden="true">
+      <g fill="none" stroke="#C9CCD1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="32" y1="9" x2="32" y2="16"/>
+        <rect x="13" y="16" width="38" height="27" rx="8" fill="#151517"/>
+        <rect x="18" y="22" width="28" height="13" rx="6" fill="#0B0B0C"/>
+        <line x1="32" y1="43" x2="32" y2="48"/>
+        <rect x="18" y="48" width="28" height="20" rx="5" fill="#151517"/>
+      </g>
+      <circle cx="32" cy="7" r="3" fill="#A89888"/>
+      <circle cx="26" cy="28.5" r="2.2" fill="#D6CBBE"/>
+      <circle cx="38" cy="28.5" r="2.2" fill="#D6CBBE"/>
+      <rect x="25" y="56" width="14" height="3.5" rx="1.75" fill="#A89888"/>
+    </svg>
+    <p class="code">404</p>
+    <h1>This page doesn't exist.</h1>
+    <p>Before you look elsewhere: what's your approach? The tutor is back on the home page.</p>
+    <a id="home" href="./">Back to Think First</a>
+  </main>
+  <script>
+    // Point the button at the site root (the repo folder on github.io), whatever path this was served at.
+    (function () {
+      var marker = '/think-first-chatbot/';
+      var i = location.pathname.toLowerCase().indexOf(marker);
+      if (i !== -1) document.getElementById('home').href = location.pathname.slice(0, i + marker.length);
+    })();
+  </script>
+</body>
+</html>
