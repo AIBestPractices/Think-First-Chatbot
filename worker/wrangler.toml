@@ -1,0 +1,13 @@
+name = "think-first-ai"
+main = "index.js"
+compatibility_date = "2025-09-01"
+workers_dev = true
+
+[vars]
+# Comma-separated list of allowed browser origins (an Origin header has no path).
+# http://localhost:* is always allowed for local testing (see index.js).
+ALLOWED_ORIGINS = "https://salhemamalik29-hub.github.io"
+
+# The API key is a secret, never stored here:
+#   npx wrangler secret put ANTHROPIC_API_KEY
+# For local `wrangler dev`, put it in worker/.dev.vars (gitignored).
