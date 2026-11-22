@@ -61,7 +61,7 @@ Anthropic Messages API (Claude Haiku 5.5)
 
 ## Run it locally
 
-You need [Node.js](https://nodejs.org/) 20 or newer.
+You need [Node.js](https://nodejs.org/) 26 or newer (the version the tests run on in CI).
 
 ```sh
 # Serve the site (any static server works). Practice mode needs no key.
