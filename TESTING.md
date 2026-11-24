@@ -10,8 +10,8 @@ Runs on every push and pull request in GitHub Actions (`.github/workflows/tests.
 
 | File | Tests | What they cover |
 |---|---|---|
-| `tests/tutor.test.js` | 45 | Number parsing ("2", "2?", "two", "2 cars", "fifty-six", "3/4"); the problem bank (9 problems, each with triggers, reasoning keywords, scaffold, accepted answers, a 3-step hint ladder and an explanation); the reasoning gate; the full example conversation; refusal variety; "ignore your rules"; vague guesses; wrong answers; hint ladder; "I don't know"; off-track reasoning and misconceptions; guiding-prompt buttons; off-bank questions; new question after solving; negated answers never marked correct; and a sweep that **the answer never appears while a problem is LOCKED** (13 attempts per problem, including demands, injections and all three guiding prompts). |
-| `tests/worker.test.js` | 24 | Gate allow → tutor called; gate deny → refusal **without** a tutor call; malformed gate output fails closed (7 variants); structured-output gate request; tutor system prompt and token cap; refusal variety; CORS allow (GitHub Pages origin, localhost on any port) and deny (5 origins, including look-alike domains and no origin); preflight; 1,000-character cap (and exactly 1,000 accepted); malformed bodies; oversized bodies (413); GET (405); missing key (503); model failure (502, no key leaked); history trimmed to 10 and starting on a user turn; rate limiting (429). |
+| `tests/tutor.test.js` | 52 | Number parsing ("2", "2?", "two", "2 cars", "fifty-six", "3/4"); the problem bank (9 problems, each with triggers, reasoning keywords, scaffold, accepted answers, a 3-step hint ladder and an explanation); the reasoning gate; the full example conversation; refusal variety; "ignore your rules"; vague guesses; wrong answers; hint ladder; "I don't know"; off-track reasoning and misconceptions; guiding-prompt buttons; off-bank questions; new question after solving; negated answers never marked correct; answers graded by the last number or a standalone leading number ("56, because 49 + 7" is right, "2 + 1 = 3" is not); "one lands first" never correct; number words ("one hundred" vs "two hundred and twelve"); questions with other numbers or conditions (3 by 5 rectangle, 3 hours, Everest, °F) not matched to a bank problem; re-asking a solved question; and a sweep that **the answer never appears while a problem is LOCKED** (13 attempts per problem, including demands, injections and all three guiding prompts). |
+| `tests/worker.test.js` | 35 | Gate allow → tutor called; gate deny → refusal **without** a tutor call; malformed gate output fails closed (7 variants); structured-output gate request; tutor system prompt and token cap; refusal variety; gate transcript can't be forged (fake `TUTOR:` lines, nested `</transcript>` tags); gate reads 20 messages, tutor 10; reply cut at the token cap ends at a full sentence; one shared model deadline (slow model → 502, no hang); CORS allow (GitHub Pages origin; localhost only with `ALLOW_LOCALHOST=true`) and deny (5 origins, including look-alike domains and no origin); preflight; 1,000-character cap for student messages (and exactly 1,000 accepted); long earlier tutor replies truncated, not rejected; a full 20-message non-English history accepted; malformed bodies; oversized bodies (413); GET (405); missing key (503); model failure (502, no key leaked); rate limiting (429), stale-client pruning, the Cloudflare binding, and the in-memory limit holding when the binding lets a burst through; `worker/index.js` exports only the default handler. |
 
 ## 2. Local site checks (served from a `/think-first-ai/` subpath, like GitHub Pages)
 
@@ -93,6 +93,15 @@ Found while deploying (2026-11-24):
 | 17 | The Worker failed to start under `wrangler dev` ("Incorrect type for map entry 'API_URL'"): the Workers runtime treats every named export of the entry module as an entry point, and the constants exported for the tests are not handlers. Unit tests import the module in Node, so they could not catch it | The logic moved to `worker/chat.js`; `worker/index.js` only has the default export. A test checks that `index.js` exports nothing else |
 | 18 | Cloudflare's rate limiting binding is approximate (counts are local and sync in the background): after deploy, 68 quick requests from one IP all passed it | A request must pass both the binding and the exact in-memory limiter |
 
+Final audit (2026-11-24): no new code bugs. Done:
+
+| # | Item | Change |
+|---|---|---|
+| 19 | README said the in-memory limiter was a "fallback"; TESTING.md per-file test counts were stale | Both updated |
+| 20 | Worker errors were only visible live with `wrangler tail` | Worker logs on (`[observability]` in `wrangler.toml`); `compatibility_date` updated to 2026-11-01 |
+| 21 | The page had no Content-Security-Policy | Added in `index.html`: only the site's own scripts and styles, Google Fonts, and the Worker (plus `localhost:8787` for local testing). Checked in a browser (section 6b) |
+| 22 | `package.json` had no Node version and called the robot a "science tutor" | `"engines": {"node": ">=26"}`; description says "science and math" |
+
 ## 6. Deployed Worker checks
 
 Worker: https://think-first-ai.salhemamalik29.workers.dev (2026-11-22, before the API key was set)
@@ -116,8 +125,25 @@ Redeployed 2026-11-24 after the audits (version `0016fb40`, still before the API
 | POST from `https://evil.example`, or with no Origin | 403 |
 | OPTIONS preflight from the Pages origin | 204 |
 | GET | 405 |
-| 40 quick requests over one connection (like a browser tab) | 20 × 503, then 20 × 429: the limit holds exactly |
+| 40 quick requests over one connection (like a browser tab) | 20 × 503, then 20 × 429 |
 | 30 quick requests, each on a new connection | 5 × 429: requests spread across Worker instances, so the limit is partial. A strict worldwide limit would need a Durable Object; the Anthropic spend limit is the hard cap |
+
+Redeployed 2026-11-24 with Worker logs on and `compatibility_date` 2026-11-01 (version `140cf4eb`, still before the API key was set): Pages origin 503 (no key), localhost 403, other site 403, preflight 204. 26 requests over one connection: 22 passed before 429s, so a browser tab is held to *about* 20 per minute (a connection can still be served by more than one Worker instance).
+
+## 6b. Browser check after the audits (2026-11-24)
+
+Headless Microsoft Edge over the DevTools protocol, against a local copy of the site served from a `/think-first-chatbot/` subpath (like GitHub Pages), with `WORKER_URL` pointed at `wrangler dev` (no API key, so the Worker answers 503).
+
+| Check | Result |
+|---|---|
+| Page loads under the new Content-Security-Policy: scripts run, Google Fonts (Inter, Newsreader) load | Pass; 0 CSP violations, 0 JavaScript errors, 0 failed requests, 0 failing assets |
+| Starts in AI mode; first message reaches the Worker (CSP `connect-src` allows it) | Pass |
+| Worker 503 → note "switched to practice mode", status line changes, practice mode answers | Pass |
+| Example conversation in practice mode (1+1 → refusal → reasoning → Sally's car → "2?" → "Correct!") | Pass |
+| No second Worker call within the 60-second retry window | Pass |
+| After 60 s the next message retries the Worker; still 503, so it stays in practice mode without a duplicate note | Pass |
+| 360 px phone width: no horizontal scroll | Pass |
+| Missing path → styled 404 page whose button links back to the site root | Pass |
 
 ## 7. Live-model checks
 

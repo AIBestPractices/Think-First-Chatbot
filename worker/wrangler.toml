@@ -1,7 +1,13 @@
 name = "think-first-ai"
 main = "index.js"
-compatibility_date = "2025-09-01"
+compatibility_date = "2026-11-01"
 workers_dev = true
+
+# Keep Worker logs in the Cloudflare dashboard (Workers → think-first-ai → Logs), so errors
+# and 429s can be reviewed later, not only live with `wrangler tail`. The Worker's own log
+# lines contain only error status codes, never chat messages or keys.
+[observability]
+enabled = true
 
 [vars]
 # Comma-separated list of allowed browser origins (an Origin header has no path).

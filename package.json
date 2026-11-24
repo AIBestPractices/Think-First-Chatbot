@@ -2,8 +2,11 @@
   "name": "think-first-ai",
   "private": true,
   "type": "module",
-  "description": "Think First: a science tutor chatbot that asks for your reasoning before it helps.",
+  "description": "Think First: a science and math tutor chatbot that asks for your reasoning before it helps.",
   "scripts": {
     "test": "node --test tests/"
+  },
+  "engines": {
+    "node": ">=26"
   }
 }
