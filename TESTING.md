@@ -6,7 +6,7 @@ This file records what was tested, how, and the results. Dates are when the chec
 
 Runs on every push and pull request in GitHub Actions (`.github/workflows/tests.yml`, Node 26). No API key needed: the Worker tests use a mocked model.
 
-**85 tests, 85 passing** (2026-11-24; 69 before the audits in section 5).
+**87 tests, 87 passing** (2026-11-24; 69 before the audits in section 5).
 
 | File | Tests | What they cover |
 |---|---|---|
@@ -86,6 +86,13 @@ A third pass re-audited those fixes and found:
 | 15 | A message rejected with 400/429 was later replayed into practice mode | It is removed from both histories |
 | 16 | `live-check.mjs` left the 429 response body open before retrying | The body is discarded first |
 
+Found while deploying (2026-11-24):
+
+| # | Problem | Fix |
+|---|---|---|
+| 17 | The Worker failed to start under `wrangler dev` ("Incorrect type for map entry 'API_URL'"): the Workers runtime treats every named export of the entry module as an entry point, and the constants exported for the tests are not handlers. Unit tests import the module in Node, so they could not catch it | The logic moved to `worker/chat.js`; `worker/index.js` only has the default export. A test checks that `index.js` exports nothing else |
+| 18 | Cloudflare's rate limiting binding is approximate (counts are local and sync in the background): after deploy, 68 quick requests from one IP all passed it | A request must pass both the binding and the exact in-memory limiter |
+
 ## 6. Deployed Worker checks
 
 Worker: https://think-first-ai.salhemamalik29.workers.dev (2026-11-22, before the API key was set)
@@ -98,6 +105,19 @@ Worker: https://think-first-ai.salhemamalik29.workers.dev (2026-11-22, before th
 | POST with no Origin header | 403 |
 | OPTIONS preflight from the Pages origin | 204 |
 | GET | 405 |
+
+Redeployed 2026-11-24 after the audits (version `0016fb40`, still before the API key was set):
+
+| Request | Result |
+|---|---|
+| `wrangler dev` locally with `ALLOW_LOCALHOST=true` | localhost origin 503 (no key), other site 403, preflight 204, GET 405, 429 after 20 requests |
+| POST from `https://salhemamalik29-hub.github.io` | 503 "The tutor is not configured yet." (expected with no key) |
+| POST from `http://localhost:8080` | 403: localhost is now refused in production |
+| POST from `https://evil.example`, or with no Origin | 403 |
+| OPTIONS preflight from the Pages origin | 204 |
+| GET | 405 |
+| 40 quick requests over one connection (like a browser tab) | 20 × 503, then 20 × 429: the limit holds exactly |
+| 30 quick requests, each on a new connection | 5 × 429: requests spread across Worker instances, so the limit is partial. A strict worldwide limit would need a Durable Object; the Anthropic spend limit is the hard cap |
 
 ## 7. Live-model checks
 

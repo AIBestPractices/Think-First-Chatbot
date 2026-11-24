@@ -4,7 +4,7 @@ import {
   handleRequest, handleChat, parseGate, trimHistory, validateBody, isAllowedOrigin,
   createRateLimiter, pickRefusal, REFUSALS, MODEL, MAX_CHARS, MAX_ASSISTANT_CHARS, TUTOR_MAX_TOKENS, API_URL,
   MAX_BODY_BYTES, transcriptFor, trimToSentence, runTutor,
-} from '../worker/index.js';
+} from '../worker/chat.js';
 
 const ENV = { ANTHROPIC_API_KEY: 'test-key-not-real', ALLOWED_ORIGINS: 'https://student.github.io' };
 const ORIGIN = 'https://student.github.io';
@@ -300,14 +300,32 @@ describe('rate limiting', () => {
   test('uses the Cloudflare RATE_LIMITER binding when present', async () => {
     const seen = [];
     const env = { ...ENV, RATE_LIMITER: { limit: async ({ key }) => { seen.push(key); return { success: false }; } } };
-    const res = await handleRequest(req(ask('hi'), { ip: '9.9.9.9' }), env, { fetchFn: mockModel().fetchFn });
+    const res = await handleRequest(req(ask('hi'), { ip: '9.9.9.9' }), env, { fetchFn: mockModel().fetchFn, memoryLimiter: unlimited });
     assert.equal(res.status, 429);
     assert.deepEqual(seen, ['9.9.9.9']);
+  });
+
+  test('the in-memory limit still applies when the approximate binding lets a burst through', async () => {
+    const env = { ...ENV, RATE_LIMITER: { limit: async () => ({ success: true }) } };
+    const memoryLimiter = createRateLimiter({ max: 3, windowMs: 60_000 });
+    const codes = [];
+    for (let i = 0; i < 5; i++) {
+      codes.push((await handleRequest(req(ask('hi'), { ip: '8.8.8.8' }), env, { fetchFn: mockModel().fetchFn, memoryLimiter })).status);
+    }
+    assert.deepEqual(codes, [200, 200, 200, 429, 429]);
   });
 
   test('returns 429 with a JSON error', async () => {
     const res = await handleRequest(req(ask('hi')), ENV, { fetchFn: mockModel().fetchFn, limiter: () => false });
     assert.equal(res.status, 429);
     assert.equal(typeof (await res.json()).error, 'string');
+  });
+});
+
+describe('entry module', () => {
+  test('worker/index.js exports only the default handler (the runtime rejects other exports)', async () => {
+    const entry = await import('../worker/index.js');
+    assert.deepEqual(Object.keys(entry), ['default']);
+    assert.equal(typeof entry.default.fetch, 'function');
   });
 });

@@ -48,7 +48,8 @@ Anthropic Messages API (Claude Haiku 5.5)
 | `script.js` | Chat UI: talks to the Worker, falls back to the scripted tutor |
 | `tutor.js` | Scripted fallback tutor (pure functions, unit tested) |
 | `config.js` | `WORKER_URL`, the Worker's address |
-| `worker/index.js`, `worker/wrangler.toml` | The Cloudflare Worker |
+| `worker/chat.js` | The Worker's logic: gate, tutor, CORS, validation, rate limiting (unit tested) |
+| `worker/index.js`, `worker/wrangler.toml` | The Worker's entry point (default export only: the runtime rejects other exports there) and its config |
 | `tests/` | Unit tests (`node --test tests/`) |
 | `404.html`, `.nojekyll`, `assets/` | GitHub Pages support files |
 
