@@ -28,7 +28,7 @@ Driven in headless Microsoft Edge over the DevTools protocol (2026-11-21).
 
 ## 3. Live GitHub Pages checks
 
-Site: https://salhemamalik29-hub.github.io/Think-First-Chatbot/ (2026-11-22, practice mode)
+Site: the live GitHub Pages site (2026-11-22, practice mode)
 
 | Check | Result |
 |---|---|

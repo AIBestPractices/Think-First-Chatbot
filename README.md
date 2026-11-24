@@ -1,7 +1,5 @@
 # Think First
 
-**Live site: https://salhemamalik29-hub.github.io/Think-First-Chatbot/**
-
 Think First is a website with a science and math tutor chatbot, the **Think-First Robot**. It won't give an answer until the student explains their thinking. Then it guides them with an example or a hint, so the student reaches the answer themselves.
 
 The project shows how AI can benefit society when it is used as a tutor that builds thinking, not as an answer machine.
