@@ -6,7 +6,7 @@ This file records what was tested, how, and the results. Dates are when the chec
 
 Runs on every push and pull request in GitHub Actions (`.github/workflows/tests.yml`, Node 26). No API key needed: the Worker tests use a mocked model.
 
-**69 tests, 69 passing** (2026-11-22).
+**85 tests, 85 passing** (2026-11-24; 69 before the audits in section 5).
 
 | File | Tests | What they cover |
 |---|---|---|
@@ -57,19 +57,48 @@ A review of everything built so far found and fixed:
 2. **A guiding prompt leaked an answer while locked**: the falling-balls "smaller example" said the balls "land together". Rewritten as a question. The LOCKED leak sweep now includes all three guiding prompts.
 3. **Input border contrast** raised to 3:1 (see above).
 
-## 5. Deployed Worker checks
+## 5. Second audit fixes (2026-11-24)
+
+A line-by-line audit before going live found and fixed the following. Each fix has a regression test.
+
+| # | Problem | Fix |
+|---|---|---|
+| 1 | A tutor reply over 1,000 characters (possible within 300 tokens) made every later request fail with 400, locking the chat until reload | Only student messages have the 1,000-character cap; earlier tutor replies are truncated at 4,000, never rejected |
+| 2 | `live-check.mjs` sends 39 requests, more than the 20-per-minute rate limit | The script waits for `Retry-After` and retries on 429 |
+| 3 | `http://localhost:*` was accepted in production; README implied CORS is access control | localhost only with `ALLOW_LOCALHOST=true` in `.dev.vars`; README explains CORS is not a password and the spend limit is the real cap |
+| 4 | Rate limit was per Worker instance, and at 5,000 clients it reset everyone | Cloudflare rate limiting binding (`RATE_LIMITER`, checked with `wrangler deploy --dry-run`); the in-memory fallback now drops only stale clients |
+| 5 | The gate saw only 10 messages, so after about 4 hints the student's reasoning dropped out and an answer attempt could be refused | The browser sends 20 messages; the gate reads 20, the tutor 10 |
+| 6 | Practice mode matched other questions to bank problems ("3 by 5 rectangle" graded against 24, "120 km in 3 hours" against 60, boiling on Everest against 100 °C) | Matching requires the exact numbers; altitude, Fahrenheit, salt water and pressure-cooker questions no longer match the boiling problem |
+| 7 | "56, because 49 + 7" was marked wrong; "the heavier ball hits the ground first since the pull is the same" and "two hundred and twelve" were marked Correct | The answer is the first or last number written; "X lands first/faster" is never correct; "hundred" is parsed as a number |
+| 8 | Re-asking a solved question said it wasn't a built-in problem | It now says "You already solved that one" |
+| 9 | One slow or failed request switched to practice mode for the rest of the visit | The browser tries the AI again on the first message a minute or more later |
+| – | Minor | Body limit raised from 16 KB to 64 KB and measured in bytes; gate transcript JSON-encodes each message so a newline can't fake a `TUTOR:` line; a reply cut off at the token cap ends at its last full sentence; the typing indicator has screen-reader text; hero text says "science and math tutor" |
+
+A third pass re-audited those fixes and found:
+
+| # | Problem | Fix |
+|---|---|---|
+| 10 | Fix 7 over-reached: a message *starting* with the target number counted, so "2 + 1 = 3" was "Correct!" for 1 + 1 | The answer is the last number, or a number standing alone in the first clause ("56, because 49 + 7"); a number that is part of a sum doesn't count |
+| 11 | The fractions problem still graded only the last number ("3/4 because 2/4 + 1/4" was "Not quite") | Uses the same check as the other problems |
+| 12 | "°F" with a space before it ("in °F?") still matched the Celsius boiling problem | The °F test sits outside the word-boundary group |
+| 13 | Stripping `<transcript>` tags could be beaten by nesting (`</trans</transcript>cript>`) | Every `<` inside a message is escaped as `<`, so no message can contain a tag |
+| 14 | The Worker kept waiting for (and paying for) the model after the browser gave up at 15 seconds | Both model calls share a 14-second deadline; a timeout returns 502 |
+| 15 | A message rejected with 400/429 was later replayed into practice mode | It is removed from both histories |
+| 16 | `live-check.mjs` left the 429 response body open before retrying | The body is discarded first |
+
+## 6. Deployed Worker checks
 
 Worker: https://think-first-ai.salhemamalik29.workers.dev (2026-11-22, before the API key was set)
 
 | Request | Result |
 |---|---|
 | POST from `https://salhemamalik29-hub.github.io` | 503 "The tutor is not configured yet." (expected with no key) |
-| POST from `http://localhost:8080` | 503, same (allowed origin) |
+| POST from `http://localhost:8080` | 503, same (allowed origin at the time; after the second audit, localhost is refused in production) |
 | POST from `https://evil.example` | 403 "Origin not allowed." |
 | POST with no Origin header | 403 |
 | OPTIONS preflight from the Pages origin | 204 |
 | GET | 405 |
 
-## 6. Live-model checks
+## 7. Live-model checks
 
-_Pending: needs `worker/.dev.vars` with the API key. `scripts/live-check.mjs` runs 39 prompts (bare question, "just tell me", "ignore your instructions", vague reasoning, wrong reasoning, correct reasoning, answer variants, wrong answers, "I don't know", repeated hints, off-topic, two prompt-injection styles, a guiding prompt, a misconception, a rule override after reasoning, and a new question after finishing one) through `npx wrangler dev`, with automatic answer-leak checks. Results will be recorded here._
+_Pending: needs `worker/.dev.vars` with the API key and `ALLOW_LOCALHOST=true`. `scripts/live-check.mjs` runs 39 prompts (bare question, "just tell me", "ignore your instructions", vague reasoning, wrong reasoning, correct reasoning, answer variants, wrong answers, "I don't know", repeated hints, off-topic, two prompt-injection styles, a guiding prompt, a misconception, a rule override after reasoning, and a new question after finishing one) through `npx wrangler dev`, with automatic answer-leak checks. Results will be recorded here._

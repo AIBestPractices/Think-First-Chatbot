@@ -5,8 +5,16 @@ workers_dev = true
 
 [vars]
 # Comma-separated list of allowed browser origins (an Origin header has no path).
-# http://localhost:* is always allowed for local testing (see index.js).
+# http://localhost:* is allowed only when ALLOW_LOCALHOST = "true", which belongs in
+# worker/.dev.vars for local testing, never here.
 ALLOWED_ORIGINS = "https://salhemamalik29-hub.github.io"
+
+# Cloudflare's rate limiter: 20 requests per minute per IP, counted across Worker
+# instances (the in-memory limiter in index.js is only the fallback).
+[[ratelimits]]
+name = "RATE_LIMITER"
+namespace_id = "1001"
+simple = { limit = 20, period = 60 }
 
 # The API key is a secret, never stored here:
 #   npx wrangler secret put ANTHROPIC_API_KEY

@@ -4,7 +4,9 @@ import { WORKER_URL } from './config.js';
 import { createSession, respond } from './tutor.js';
 
 const TIMEOUT_MS = 15000;
+const RETRY_AI_MS = 60000; // after an outage, try the AI again on the first message after this long
 const MAX_CHARS = 1000;
+const HISTORY_SENT = 20; // the Worker's gate reads up to 20 messages; the tutor reads the last 10
 const GREETING =
   "Hi, I'm the Think-First Robot. Ask me a science or math question. Before I help, I'll ask you to explain how you'd approach it.";
 const STATUS_AI = 'Powered by an AI model (Claude)';
@@ -24,6 +26,7 @@ const state = {
   userMessages: [], // every user message, used to rebuild the scripted tutor's state
   tutor: createSession(),
   mode: WORKER_URL && !forcePractice ? 'ai' : 'practice',
+  retryAiAt: null, // set when the AI was unreachable; null means don't retry
   busy: false,
 };
 
@@ -73,8 +76,8 @@ function addNote(text) {
 function showTyping() {
   const el = document.createElement('div');
   el.className = 'msg msg-bot';
-  el.setAttribute('aria-label', 'Robot is typing');
-  el.innerHTML = '<span class="typing" aria-hidden="true"><span></span><span></span><span></span></span>';
+  // aria-label is ignored on a plain div, so screen readers get visually hidden text instead.
+  el.innerHTML = '<span class="sr-only">Robot is typing…</span><span class="typing" aria-hidden="true"><span></span><span></span><span></span></span>';
   log.append(el);
   scrollToEnd();
   return el;
@@ -95,7 +98,7 @@ async function askWorker() {
     const res = await fetch(WORKER_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ messages: state.history.slice(-10) }),
+      body: JSON.stringify({ messages: state.history.slice(-HISTORY_SENT) }),
       signal: ctrl.signal,
     });
     const data = await res.json().catch(() => null);
@@ -119,11 +122,17 @@ function askPractice(text) {
 /** Rebuild the scripted tutor from the whole conversation so it can pick up mid-problem. */
 function switchToPractice() {
   state.mode = 'practice';
+  state.retryAiAt = Date.now() + RETRY_AI_MS;
   setStatus();
   let session = createSession();
   for (const m of state.userMessages.slice(0, -1)) session = respond(session, m).session;
   state.tutor = session;
-  addNote('The AI model is unreachable right now, so I switched to practice mode.');
+  addNote('The AI model is unreachable right now, so I switched to practice mode. I will try the AI again in a minute.');
+}
+
+/** After an outage, the first message sent once the retry time has passed tries the AI again. */
+function shouldRetryAi() {
+  return state.mode === 'practice' && state.retryAiAt !== null && Date.now() >= state.retryAiAt;
 }
 
 async function send(raw) {
@@ -138,7 +147,18 @@ async function send(raw) {
 
   let reply;
   let suggestions = [];
-  if (state.mode === 'ai') {
+  if (shouldRetryAi()) {
+    try {
+      reply = await askWorker();
+      state.mode = 'ai';
+      state.retryAiAt = null;
+      setStatus();
+      addNote('The AI model is back, so I switched out of practice mode.');
+    } catch {
+      // Still down: stay in practice mode (its state is already current) and try again later.
+      state.retryAiAt = Date.now() + RETRY_AI_MS;
+    }
+  } else if (state.mode === 'ai') {
     try {
       reply = await askWorker();
     } catch (err) {
@@ -147,7 +167,9 @@ async function send(raw) {
         reply = err.status === 429
           ? "You're sending messages quickly. Take a breath and try again in a minute."
           : "I couldn't read that message. Try a shorter one (up to 1,000 characters).";
+        // Forget the rejected message everywhere, so practice mode never replays it later.
         state.history.pop();
+        state.userMessages.pop();
       } else {
         switchToPractice();
       }

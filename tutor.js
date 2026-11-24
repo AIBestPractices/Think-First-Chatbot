@@ -96,9 +96,22 @@ export function finalNumber(text) {
   return nums.length ? nums[nums.length - 1] : null;
 }
 
+// Splits off the first clause: at punctuation (not a decimal point or a thousands comma)
+// or at a word that starts an explanation.
+const CLAUSE_BREAK = /,(?!\d{3}\b)|[;:!?]|\.(?!\d)|\b(?:because|since|so|as|cause|cuz)\b/;
+
+/**
+ * True when the student's answer is `target`. The answer is the last number they wrote
+ * ("49 + 7 = 56"), or a number standing alone in the first clause ("56, because 49 + 7").
+ * A leading number that is part of a sum doesn't count: "2 + 1 = 3" is not 2.
+ */
 const numberIs = (target) => (text) => {
-  const n = finalNumber(text);
-  return n !== null && Math.abs(n - target) < 1e-9;
+  const is = (n) => Math.abs(n - target) < 1e-9;
+  const nums = extractNumbers(text);
+  if (!nums.length) return false;
+  if (is(nums[nums.length - 1])) return true;
+  const lead = extractNumbers(String(text).toLowerCase().split(CLAUSE_BREAK)[0]);
+  return lead.length === 1 && is(lead[0]);
 };
 
 // ---------------------------------------------------------------------------
@@ -169,7 +182,8 @@ export const PROBLEMS = [
   {
     id: 'rect-area',
     prompt: 'What is the area of a 4 by 6 rectangle?',
-    match: (t) => /\barea\b/.test(t) && (/\b(4\s*(by|x|×|\*)\s*6|6\s*(by|x|×|\*)\s*4|four by six|six by four)\b/.test(t) || /rectangle/.test(t)),
+    // Only this rectangle: "the area of a 3 by 5 rectangle" is a different question.
+    match: (t) => /\barea\b/.test(t) && /\b(4\s*(cm|m|units?)?\s*(by|x|×|\*)\s*6|6\s*(cm|m|units?)?\s*(by|x|×|\*)\s*4|four by six|six by four)\b/.test(t),
     reasoningKeywords: ['multiply', 'multiplying', 'times', 'length', 'width', 'rows', 'columns', 'squares', 'grid', 'base', 'height'],
     misconceptions: [
       {
@@ -229,7 +243,8 @@ export const PROBLEMS = [
   {
     id: 'speed',
     prompt: 'A car travels 120 km in 2 hours. What is its average speed?',
-    match: (t) => /\b(speed|how fast)\b/.test(t) && /\b120\b/.test(t),
+    // Only 120 km in 2 hours: "120 km in 3 hours" has a different answer.
+    match: (t) => /\b(speed|how fast)\b/.test(t) && /\b120\b/.test(t) && /\b(2|two)\s*(hours?|hrs?|h)\b/.test(t),
     reasoningKeywords: ['divide', 'dividing', 'distance', 'time', 'per', 'hour', 'each hour', 'split', 'half', 'over'],
     misconceptions: [
       {
@@ -265,11 +280,7 @@ export const PROBLEMS = [
       },
     ],
     scaffold: 'Good idea to make the pieces the same size. How many quarters are in one half? Then add the extra quarter. How many quarters is that altogether?',
-    check: (t) => {
-      if (/\bthree (quarters|fourths)\b/.test(t)) return true;
-      const n = finalNumber(t);
-      return n !== null && Math.abs(n - 0.75) < 1e-9 || /\b75\s*%/.test(t);
-    },
+    check: (t) => /\bthree (quarters|fourths)\b/.test(t) || numberIs(0.75)(t) || /\b75\s*%/.test(t),
     hints: [
       'Fractions can only be added directly when the bottom numbers (denominators) match.',
       'One half is the same as two quarters: 1/2 = 2/4.',
@@ -285,8 +296,11 @@ export const PROBLEMS = [
   {
     id: 'boiling',
     prompt: 'At what temperature does water boil at sea level, in °C?',
-    match: (t) => /\bboil/.test(t) && /\bwater\b/.test(t),
-    reasoningKeywords: ['celsius', 'scale', 'freez', 'temperature', 'heat', 'degrees', 'bubbles', 'steam', 'sea level', 'pressure', '0', 'zero'],
+    // Not for questions whose answer isn't 100 °C: altitude, Fahrenheit, salt water, pressure cookers.
+    match: (t) => /\bboil/.test(t) && /\bwater\b/.test(t) &&
+      // "°" isn't a word character, so "°F" sits outside the \b group ("212 °F" has a space before it).
+      !/\b(mountain|everest|altitude|elevation|denver|high up|fahrenheit|salt|salty|pressure cooker|kelvin)\b|°\s?f\b/.test(t),
+    reasoningKeywords: ['celsius', 'scale', 'freez', 'temperature', 'heat', 'degrees', 'bubbles', 'steam', 'sea level', 'pressure', 'zero'],
     misconceptions: [
       {
         test: (t) => /\b212\b/.test(t),
@@ -294,7 +308,8 @@ export const PROBLEMS = [
       },
     ],
     scaffold: 'The Celsius scale was built around water: 0 °C is where pure water freezes at sea level. The other fixed point on the scale is where water boils, and it was set to a round number. What number do you think it is?',
-    check: (t) => numberIs(100)(t) || /\b(one )?hundred\b/.test(t),
+    // Number words are parsed, so "one hundred" counts and "two hundred and twelve" doesn't.
+    check: numberIs(100),
     hints: [
       'On the Celsius scale, the gap between water freezing and boiling was divided into equal steps.',
       'That gap was split into exactly one hundred degrees. "Centi" means hundredth.',
@@ -310,7 +325,7 @@ export const PROBLEMS = [
   {
     id: 'plants-gas',
     prompt: 'What gas do plants take in from the air to make their food?',
-    match: (t) => /\bplants?\b/.test(t) && /\b(gas|air|breathe|take in|photosynth|food)\b/.test(t),
+    match: (t) => /\bplants?\b/.test(t) && /\b(gas|air|breathe|take in|photosynth|carbon)\b/.test(t),
     reasoningKeywords: ['oxygen', 'breathe', 'breath', 'photosynthesis', 'sunlight', 'light', 'leaves', 'air', 'exhale', 'opposite', 'reverse'],
     misconceptions: [
       {
@@ -346,7 +361,9 @@ export const PROBLEMS = [
       },
     ],
     scaffold: "Gravity pulls harder on the heavy ball, but the heavy ball also has more mass, so it's harder to speed up. Those two effects cancel out exactly. So with no air resistance, how do their landing times compare?",
-    check: (t) => /\b(same time|at once|together|simultaneous|neither|tie|both land|equal(ly)?|same)\b/.test(t) && !/\bheav(y|ier) (one |ball )?(first|lands first)\b/.test(t),
+    // "Same" alone isn't enough: "the heavier ball hits the ground first since the pull is the same" is wrong.
+    check: (t) => /\b(same time|at once|together|simultaneous|neither|tie|both land|equal(ly)?|same)\b/.test(t) &&
+      !/(?<!\b(?:neither|nor|not|no) (?:the )?)\b(heav(y|ier)|light(er)?)( one| ball)? (\w+ ){0,4}?(first|faster|sooner|quicker|earlier)\b/.test(t),
     hints: [
       'Near Earth, gravity gives every object the same acceleration, about 9.8 m/s², if air resistance is ignored.',
       'Same acceleration and same starting height means the same speed at every moment of the fall.',
@@ -471,9 +488,8 @@ function refusal(session) {
 
 function nextHint(problem, session) {
   const i = Math.min(session.hintIndex, problem.hints.length - 1);
-  const last = session.hintIndex >= problem.hints.length - 1;
   const text = problem.hints[i] + (session.hintIndex >= problem.hints.length ? " You're one step away. Give it a try." : '');
-  return { text, session: { ...session, hintIndex: session.hintIndex + 1 }, last };
+  return { text, session: { ...session, hintIndex: session.hintIndex + 1 } };
 }
 
 function result(reply, session, suggestions = []) {
@@ -567,7 +583,8 @@ export function respond(session, message) {
   }
 
   if (s.state === STATES.SOLVED) {
-    if (isInjection(t) || isAnswerDemand(t) || isStuck(t) || isHintRequest(t)) {
+    // `found` here can only be the problem just solved, asked again.
+    if (found || isInjection(t) || isAnswerDemand(t) || isStuck(t) || isHintRequest(t)) {
       return result(`You already solved that one. ${problem.explain} Want to try another?`, s, EXAMPLE_PROMPTS.filter((p) => p !== problem.prompt).slice(0, 4));
     }
     return offBank(s);

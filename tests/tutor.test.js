@@ -251,6 +251,52 @@ describe('conversation flow', () => {
     const s = last(run('At what temperature does water boil?', 'I think it is 212 because that is what my thermometer at home says'));
     assert.match(s.reply, /Fahrenheit/);
   });
+  test('an answer the student leads with is graded, not the last number in the explanation', () => {
+    const mult = ['What is 7 x 8?', 'I know 7 x 7 is 49 so I would add one more group of seven'];
+    assert.match(last(run(...mult, '56, because 49 + 7')).reply, /^Correct!/);
+    assert.match(last(run(...mult, '49 + 7 = 56')).reply, /^Correct!/);
+    assert.doesNotMatch(last(run(...mult, '54, because 49 + 5')).reply, /Correct!/);
+  });
+  test('a leading number that is part of a sum is not the answer', () => {
+    const add = ['What is 1+1?', 'When you add two positive numbers, the sum has to be bigger than each number'];
+    assert.doesNotMatch(last(run(...add, '2 + 1 = 3')).reply, /Correct!/);
+    assert.match(last(run(...add, '2, because one car and one more car')).reply, /^Correct!/);
+    assert.match(last(run(...add, '1 + 1 = 2')).reply, /^Correct!/);
+  });
+  test('fractions: the answer the student leads with is graded', () => {
+    const fr = ['What is 1/2 + 1/4?', 'I think you need a common denominator so I would change the half into quarters'];
+    assert.match(last(run(...fr, '3/4 because 2/4 + 1/4')).reply, /^Correct!/);
+    assert.match(last(run(...fr, '2/4 + 1/4 = 0.75')).reply, /^Correct!/);
+    assert.doesNotMatch(last(run(...fr, '2/6 because you add the tops and bottoms')).reply, /Correct!/);
+  });
+  test('"one lands first" is never correct, even when it mentions "same"', () => {
+    const fall = ['If I drop a heavy ball and a light ball which lands first?', 'I think gravity pulls on mass so I would compare the forces on them'];
+    for (const a of ['the heavier ball hits the ground first since the pull is the same',
+      'the heavy one lands first because gravity is the same', 'the light ball falls faster, the same as a feather']) {
+      assert.doesNotMatch(last(run(...fall, a)).reply, /Correct!/, a);
+    }
+    assert.match(last(run(...fall, 'neither the heavy nor the light one lands first, they land at the same time')).reply, /^Correct!/);
+  });
+  test('"two hundred and twelve" is not 100 °C; "one hundred" is', () => {
+    const boil = ['At what temperature does water boil?', 'I know water freezes at 0 so I think the scale goes up from there'];
+    assert.doesNotMatch(last(run(...boil, 'two hundred and twelve')).reply, /Correct!/);
+    assert.match(last(run(...boil, 'one hundred')).reply, /^Correct!/);
+    assert.match(last(run(...boil, 'a hundred degrees')).reply, /^Correct!/);
+  });
+  test('questions with different numbers or conditions are not matched to a bank problem', () => {
+    for (const q of ['What is the area of a 3 by 5 rectangle?', 'A car travels 120 km in 3 hours. What is its speed?',
+      'At what temperature does water boil on Mount Everest?', 'At what temperature does water boil in Fahrenheit?',
+      'At what temperature does water boil, in °F?', 'Does water boil at 212°F?',
+      'What food do plants like?']) {
+      assert.equal(findProblem(q), null, q);
+    }
+    assert.equal(findProblem('What is the area of a 4 cm by 6 cm rectangle?').id, 'rect-area');
+    assert.equal(findProblem('A car goes 120 km in 2 hours, how fast is it?').id, 'speed');
+  });
+  test('re-asking a solved question says it is already solved', () => {
+    const s = last(run('What is 1+1?', 'When you add two positive numbers, the sum has to be bigger than each number', '2', 'What is 1+1?'));
+    assert.match(s.reply, /already solved/);
+  });
 });
 
 describe('never leaks the answer while LOCKED', () => {

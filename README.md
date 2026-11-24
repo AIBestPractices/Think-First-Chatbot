@@ -38,7 +38,7 @@ Anthropic Messages API (Claude Haiku 5.5)
 
 - **GitHub Pages** hosts the site: plain HTML, CSS and JavaScript, no build step. Pages is static and can't keep secrets, so the site never holds the API key.
 - **The Cloudflare Worker** (`worker/`) holds the key and calls Claude. The "think first" rule is enforced in code: a small classifier call decides whether the student has explained their thinking. If not, the Worker returns a refusal **without calling the tutor model at all**. Malformed classifier output counts as "not allowed".
-- **Fallback:** if the Worker URL is empty, unreachable, errors, or takes more than 15 seconds, the browser switches to a built-in scripted tutor (`tutor.js`) with 9 practice problems. The status line under the chat says which mode is active.
+- **Fallback:** if the Worker URL is empty, unreachable, errors, or takes more than 15 seconds, the browser switches to a built-in scripted tutor (`tutor.js`) with 9 practice problems. After an outage it tries the AI again on the first message sent a minute or more later. The status line under the chat says which mode is active.
 
 ### Files
 
@@ -55,9 +55,10 @@ Anthropic Messages API (Claude Haiku 5.5)
 ### Safety and cost controls in the Worker
 
 - The API key is a Cloudflare secret (`ANTHROPIC_API_KEY`). It is not in this repo, the browser, or the logs.
-- CORS only allows `https://salhemamalik29-hub.github.io` and `http://localhost:*`.
-- Each message is capped at 1,000 characters, only the last 10 messages are sent, replies are capped at 300 tokens, and there is a basic per-IP rate limit (20 requests per minute per Worker instance).
-- Oversized or malformed requests get a clean JSON error.
+- CORS only allows `https://salhemamalik29-hub.github.io` (plus `http://localhost:*` when `ALLOW_LOCALHOST=true` is set in `worker/.dev.vars` for local testing). CORS stops other *websites* from using the Worker in a browser, but it is not a password: a script can send any `Origin` header. The rate limit and your Anthropic spend limit are what cap the cost.
+- Each student message is capped at 1,000 characters. The gate reads the last 20 messages (so the student's earlier reasoning stays visible); the tutor reads the last 10. Replies are capped at 300 tokens, and a reply cut off by the cap ends at its last full sentence. Earlier tutor replies sent back as history are truncated, never rejected.
+- Rate limit: 20 requests per minute per IP, using Cloudflare's rate limiting binding (`RATE_LIMITER` in `wrangler.toml`), with an in-memory fallback.
+- Oversized (over 64 KB) or malformed requests get a clean JSON error.
 
 ## Run it locally
 
@@ -70,7 +71,11 @@ npx serve .
 
 To run the Worker locally with the real model:
 
-1. Create `worker/.dev.vars` with one line: `ANTHROPIC_API_KEY=sk-ant-...` (this file is gitignored).
+1. Create `worker/.dev.vars` (this file is gitignored) with two lines:
+   ```
+   ANTHROPIC_API_KEY=sk-ant-...
+   ALLOW_LOCALHOST=true
+   ```
 2. Run `cd worker` and then `npx wrangler dev`. The Worker runs at `http://localhost:8787`.
 3. In `config.js`, set `WORKER_URL` to `http://localhost:8787` while testing. Don't commit that change.
 
