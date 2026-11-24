@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   handleRequest, handleChat, parseGate, trimHistory, validateBody, isAllowedOrigin,
   createRateLimiter, pickRefusal, REFUSALS, MODEL, MAX_CHARS, MAX_ASSISTANT_CHARS, TUTOR_MAX_TOKENS, API_URL,
-  MAX_BODY_BYTES, transcriptFor, trimToSentence, runTutor,
+  MAX_BODY_BYTES, transcriptFor, trimToSentence, runTutor, parseTutor, GATE_PROMPT, RECHECK_REPLY,
 } from '../worker/chat.js';
 
 const ENV = { ANTHROPIC_API_KEY: 'test-key-not-real', ALLOWED_ORIGINS: 'https://student.github.io' };
@@ -13,14 +13,14 @@ const ORIGIN = 'https://student.github.io';
  * A mocked Anthropic API. `gate` is the raw text the gate call returns;
  * `tutor` is the tutor's reply. Records every call.
  */
-function mockModel({ gate = '{"allow": true}', tutor = 'Nice reasoning. Try this example.', status = 200 } = {}) {
+function mockModel({ gate = '{"allow": true}', tutor = 'Nice reasoning. Try this example.', verdict = 'none', status = 200 } = {}) {
   const calls = [];
   const fetchFn = async (url, init) => {
     const body = JSON.parse(init.body);
-    const kind = body.output_config?.format ? 'gate' : 'tutor';
+    const kind = body.system === GATE_PROMPT ? 'gate' : 'tutor';
     calls.push({ url, kind, body, headers: init.headers });
     if (status !== 200) return new Response(JSON.stringify({ error: { type: 'overloaded_error' } }), { status });
-    const text = kind === 'gate' ? gate : tutor;
+    const text = kind === 'gate' ? gate : JSON.stringify({ check: 'private working', verdict, reply: tutor });
     return new Response(JSON.stringify({ content: [{ type: 'text', text }], stop_reason: 'end_turn' }), { status: 200 });
   };
   return { fetchFn, calls };
@@ -124,8 +124,39 @@ describe('gate', () => {
   test('a reply cut off by the token cap ends at a full sentence', async () => {
     assert.equal(trimToSentence('You are on the right track. Now think about groups of seven and what each gro'), 'You are on the right track.');
     assert.equal(trimToSentence('no sentence end here'), 'no sentence end here…');
-    const fetchFn = async () => new Response(JSON.stringify({ content: [{ type: 'text', text: 'Nice work so far, keep going. Next, try splitting the' }], stop_reason: 'max_tokens' }));
+    const cut = '{"check":"7 x 13 = 91","verdict":"none","reply":"Nice work so far, keep going. Next, try splitting the';
+    const fetchFn = async () => new Response(JSON.stringify({ content: [{ type: 'text', text: cut }], stop_reason: 'max_tokens' }));
     assert.equal(await runTutor([{ role: 'user', content: 'x' }], { fetchFn, apiKey: 'k' }), 'Nice work so far, keep going.');
+  });
+
+  test('the tutor asks for structured output with the check before the reply', async () => {
+    const m = mockModel();
+    await handleChat([{ role: 'user', content: 'I think you multiply because area is rows times columns' }], { fetchFn: m.fetchFn, apiKey: 'k' });
+    const schema = m.calls[1].body.output_config.format.schema;
+    assert.deepEqual(Object.keys(schema.properties), ['check', 'verdict', 'reply']);
+  });
+
+  test('only the reply reaches the student, never the private check', async () => {
+    const m = mockModel({ tutor: 'Try 4 rows of 6 squares. How many is that?' });
+    const out = await handleChat([{ role: 'user', content: 'I think you multiply length by width' }], { fetchFn: m.fetchFn, apiKey: 'k' });
+    assert.equal(out.reply, 'Try 4 rows of 6 squares. How many is that?');
+    assert.doesNotMatch(out.reply, /private working/);
+  });
+
+  test('"Correct!" only gets through when the verdict is correct', () => {
+    const leak = JSON.stringify({ check: '4 x 6 = 24, student said 20', verdict: 'wrong', reply: 'Correct! 4 rows of 6 is 24.' });
+    assert.equal(parseTutor(leak), RECHECK_REPLY);
+    const none = JSON.stringify({ check: '', verdict: 'none', reply: 'Correct! The answer is 24.' });
+    assert.equal(parseTutor(none), RECHECK_REPLY);
+    const ok = JSON.stringify({ check: '3 + 5 = 8, matches', verdict: 'correct', reply: 'Correct! Three steps up from 5 is 8.' });
+    assert.equal(parseTutor(ok), 'Correct! Three steps up from 5 is 8.');
+    const affirm = JSON.stringify({ check: '', verdict: 'none', reply: 'Correct, multiplication is repeated addition. What is 3 x 8?' });
+    assert.equal(parseTutor(affirm), 'Correct, multiplication is repeated addition. What is 3 x 8?');
+  });
+
+  test('unreadable tutor output falls back to a safe message', () => {
+    assert.match(parseTutor('not json at all'), /science and math/);
+    assert.match(parseTutor('{"check":"x","verdict":"none","reply":""}'), /science and math/);
   });
 
   test('tutor request carries the system prompt and the token cap', async () => {

@@ -1,3 +1,3 @@
 // URL of the Cloudflare Worker that holds the API key and talks to Claude.
 // Leave empty to run in practice mode (built-in scripted tutor only).
-export const WORKER_URL = '';
+export const WORKER_URL = 'https://think-first-ai.salhemamalik29.workers.dev';

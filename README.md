@@ -31,7 +31,8 @@ Browser (static site on GitHub Pages)
    ▼
 Cloudflare Worker (free *.workers.dev address, holds the API key as a secret)
    │  1. gate call  → {"allow": true|false}   (fails closed on bad output)
-   │  2. tutor call → only if allowed
+   │  2. tutor call → only if allowed: {"check", "verdict", "reply"}
+   │     (only "reply" is sent back; "Correct!" needs verdict = correct)
    ▼
 Anthropic Messages API (Claude Haiku 5.5)
 ```
@@ -57,7 +58,7 @@ Anthropic Messages API (Claude Haiku 5.5)
 
 - The API key is a Cloudflare secret (`ANTHROPIC_API_KEY`). It is not in this repo, the browser, or the logs.
 - CORS only allows `https://salhemamalik29-hub.github.io` (plus `http://localhost:*` when `ALLOW_LOCALHOST=true` is set in `worker/.dev.vars` for local testing). CORS stops other *websites* from using the Worker in a browser, but it is not a password: a script can send any `Origin` header. The rate limit and your Anthropic spend limit are what cap the cost.
-- Each student message is capped at 1,000 characters. The gate reads the last 20 messages (so the student's earlier reasoning stays visible); the tutor reads the last 10. Replies are capped at 300 tokens, and a reply cut off by the cap ends at its last full sentence. Earlier tutor replies sent back as history are truncated, never rejected.
+- Each student message is capped at 1,000 characters. The gate reads the last 20 messages (so the student's earlier reasoning stays visible); the tutor reads the last 10. The tutor's output is capped at 500 tokens, and a reply cut off by the cap ends at its last full sentence. Earlier tutor replies sent back as history are truncated, never rejected.
 - Rate limit: 20 requests per minute per IP. Each request must pass two limiters: an exact in-memory count (within one Worker instance) and Cloudflare's rate limiting binding (`RATE_LIMITER` in `wrangler.toml`, which spans instances but is approximate). A browser tab is held to about 20 (measured: 20–22); a script opening a new connection per request can get more through, so the spend limit stays the hard cap.
 - Each model request has a 14-second deadline (both calls together), so the Worker stops paying once the browser has given up.
 - Oversized (over 64 KB) or malformed requests get a clean JSON error.
