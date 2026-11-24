@@ -161,6 +161,8 @@ All gating checks passed in every run: bare questions, "just tell me", "ignore y
 
 The deployed Worker (version `07654120`) was checked the same way: a bare question was gated, and an explained question got a guiding hint.
 
+Live site in AI mode (headless Edge, after commit `dc58b6a`): the status line says "Powered by an AI model (Claude)"; "What is 6 × 7?" was refused; reasoning from 6 × 6 = 36 got a hint without the answer; "42" got "Correct!"; every Worker call returned 200 (preflights 204); no CSP violations and no JavaScript errors.
+
 ### Transcript of run 5
 
 
