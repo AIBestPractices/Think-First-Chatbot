@@ -433,15 +433,6 @@ a { color: var(--taupe-light); }
 .card h3 { font-size: 1.35rem; margin-bottom: 10px; }
 .card p { color: var(--muted-2); }
 
-.sources {
-  margin-top: 48px;
-  padding-top: 24px;
-  border-top: 1px solid var(--line-1);
-}
-.sources h3 { font-size: 1.2rem; margin-bottom: 10px; }
-.sources ul { margin: 0; padding-left: 20px; color: var(--muted-2); }
-.sources li + li { margin-top: 4px; }
-
 /* ---------- Footer ---------- */
 .site-footer {
   background: var(--footer);
