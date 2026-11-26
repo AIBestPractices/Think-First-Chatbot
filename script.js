@@ -184,12 +184,14 @@ async function send(raw) {
 
   typing.remove();
   addMessage('bot', reply, suggestions);
-  if (state.history[state.history.length - 1]?.role === 'user') {
+  const lastTurn = state.history[state.history.length - 1];
+  if (lastTurn && lastTurn.role === 'user') {
     state.history.push({ role: 'assistant', content: reply });
   }
   state.history = state.history.slice(-20);
   setBusy(false);
-  if (document.activeElement === document.body || document.activeElement?.classList.contains('suggestion')) {
+  const focused = document.activeElement;
+  if (!focused || focused === document.body || focused.classList.contains('suggestion')) {
     input.focus({ preventScroll: true });
   }
 }
@@ -201,5 +203,8 @@ form.addEventListener('submit', (e) => {
 
 guideButtons.forEach((b) => b.addEventListener('click', () => send(b.dataset.guide)));
 
+// The page ships a "needs JavaScript" note for browsers that can't run this script; remove it now.
+const noScript = document.getElementById('no-script');
+if (noScript) noScript.remove();
 setStatus();
 addMessage('bot', GREETING);

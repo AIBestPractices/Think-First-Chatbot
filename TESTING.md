@@ -6,11 +6,11 @@ This file records what was tested, how, and the results. Dates are when the chec
 
 Runs on every push and pull request in GitHub Actions (`.github/workflows/tests.yml`, Node 26). No API key needed: the Worker tests use a mocked model.
 
-**91 tests, 91 passing** (2026-11-24; 69 before the audits in section 5, 87 before the structured tutor output in section 7).
+**92 tests, 92 passing** (2026-11-26; 91 before the browser-compatibility test in section 9; 69 before the audits in section 5, 87 before the structured tutor output in section 7).
 
 | File | Tests | What they cover |
 |---|---|---|
-| `tests/tutor.test.js` | 52 | Number parsing ("2", "2?", "two", "2 cars", "fifty-six", "3/4"); the problem bank (9 problems, each with triggers, reasoning keywords, scaffold, accepted answers, a 3-step hint ladder and an explanation); the reasoning gate; the full example conversation; refusal variety; "ignore your rules"; vague guesses; wrong answers; hint ladder; "I don't know"; off-track reasoning and misconceptions; guiding-prompt buttons; off-bank questions; new question after solving; negated answers never marked correct; answers graded by the last number or a standalone leading number ("56, because 49 + 7" is right, "2 + 1 = 3" is not); "one lands first" never correct; number words ("one hundred" vs "two hundred and twelve"); questions with other numbers or conditions (3 by 5 rectangle, 3 hours, Everest, °F) not matched to a bank problem; re-asking a solved question; and a sweep that **the answer never appears while a problem is LOCKED** (13 attempts per problem, including demands, injections and all three guiding prompts). |
+| `tests/tutor.test.js` | 53 | Browser code free of syntax older phones and browsers can't parse (regex lookbehind, `?.`, `??` and others); Number parsing ("2", "2?", "two", "2 cars", "fifty-six", "3/4"); the problem bank (9 problems, each with triggers, reasoning keywords, scaffold, accepted answers, a 3-step hint ladder and an explanation); the reasoning gate; the full example conversation; refusal variety; "ignore your rules"; vague guesses; wrong answers; hint ladder; "I don't know"; off-track reasoning and misconceptions; guiding-prompt buttons; off-bank questions; new question after solving; negated answers never marked correct; answers graded by the last number or a standalone leading number ("56, because 49 + 7" is right, "2 + 1 = 3" is not); "one lands first" never correct; number words ("one hundred" vs "two hundred and twelve"); questions with other numbers or conditions (3 by 5 rectangle, 3 hours, Everest, °F) not matched to a bank problem; re-asking a solved question; and a sweep that **the answer never appears while a problem is LOCKED** (13 attempts per problem, including demands, injections and all three guiding prompts). |
 | `tests/worker.test.js` | 39 | Gate allow → tutor called; gate deny → refusal **without** a tutor call; malformed gate output fails closed (7 variants); structured-output gate request; tutor system prompt and token cap; structured tutor output (check before reply, only the reply reaches the browser, "Correct!" blocked unless the verdict is correct, unreadable output falls back safely); refusal variety; gate transcript can't be forged (fake `TUTOR:` lines, nested `</transcript>` tags); gate reads 20 messages, tutor 10; reply cut at the token cap ends at a full sentence; one shared model deadline (slow model → 502, no hang); CORS allow (GitHub Pages origin; localhost only with `ALLOW_LOCALHOST=true`) and deny (5 origins, including look-alike domains and no origin); preflight; 1,000-character cap for student messages (and exactly 1,000 accepted); long earlier tutor replies truncated, not rejected; a full 20-message non-English history accepted; malformed bodies; oversized bodies (413); GET (405); missing key (503); model failure (502, no key leaked); rate limiting (429), stale-client pruning, the Cloudflare binding, and the in-memory limit holding when the binding lets a burst through; `worker/index.js` exports only the default handler. |
 
 ## 2. Local site checks (served from a `/think-first-ai/` subpath, like GitHub Pages)
@@ -360,3 +360,24 @@ The GitHub account was renamed to `AIBestPractices`, so the site moved to `https
 |---|---|
 | POST from `https://aibestpractices.github.io` | 200 |
 | POST from the old `https://salhemamalik29-hub.github.io` | 403 |
+
+## 9. Browser and device compatibility (2026-11-26)
+
+**Fixed:**
+- `tutor.js` used a regex lookbehind, which Safari before 16.4 (iOS 16.3 and older) can't parse, so the whole chatbot failed to load there. It is now a small helper with the same behaviour (test 39 still passes), and a new unit test blocks this and other newer syntax in the browser code.
+- `script.js` used `?.`; replaced with plain checks.
+- The chat box shows a "needs JavaScript" note when the chatbot can't start (JavaScript off, a very old browser, a crawler); the script removes it on start.
+- On short screens (height up to 700px) the input sits right under the messages, the guiding-prompt buttons move below it, and the message area is sized to the screen. On phones held sideways the header no longer sticks.
+- Phones: no automatic text enlargement (iOS landscape), no iOS input shading, input text stays 16px so iPhones don't zoom in; the 404 page uses the visible screen height.
+- Focus rings work in browsers without `:focus-visible` (Safari before 15.4); Windows high-contrast mode gets visible edges on bubbles and buttons; `color-scheme` meta for dark form controls before the CSS loads.
+
+**Checked** with Playwright (Chromium 159, Firefox 159, WebKit 27.2, the engine behind Safari) against a local copy, practice mode, real typing and taps:
+
+| Engine | Screens | Result |
+|---|---|---|
+| Chromium | desktop 1366×768, Pixel 7, Galaxy S9+, Pixel 7 sideways | all checks pass |
+| Firefox | desktop 1366×768, 360×740, 320×568 | all checks pass |
+| WebKit | desktop 1366×768, iPhone SE, iPhone 13, iPhone 13 sideways, iPad Mini | all checks pass |
+| All three | JavaScript off | the "needs JavaScript" note shows; the rest of the page reads normally |
+
+Checks on each screen: the chatbot starts; a practice conversation reaches "Correct!"; no sideways scrolling; input text 16px or more; buttons and links at least 44px tall; messages and input fit on one screen; no security-rule violations; no JavaScript errors. Before the short-screen layout, the fit check failed on iPhone SE, 320×568 and both sideways phones.

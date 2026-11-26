@@ -114,6 +114,21 @@ const numberIs = (target) => (text) => {
   return lead.length === 1 && is(lead[0]);
 };
 
+// "The heavy one lands first", unless it is denied ("neither the heavy nor the light one lands first").
+// Written without a regex lookbehind, which Safari before 16.4 can't parse: one such regex anywhere
+// in this file would stop the whole chatbot from loading there.
+const ONE_FIRST = /\b(heav(y|ier)|light(er)?)( one| ball)? (\w+ ){0,4}?(first|faster|sooner|quicker|earlier)\b/g;
+const DENIED_BEFORE = /\b(?:neither|nor|not|no) (?:the )?$/;
+function claimsOneFirst(text) {
+  ONE_FIRST.lastIndex = 0;
+  let m;
+  while ((m = ONE_FIRST.exec(text)) !== null) {
+    if (!DENIED_BEFORE.test(text.slice(0, m.index))) return true;
+    ONE_FIRST.lastIndex = m.index + 1; // try every start position, as the lookbehind did
+  }
+  return false;
+}
+
 // ---------------------------------------------------------------------------
 // Problem bank. Every fact here has been checked.
 // ---------------------------------------------------------------------------
@@ -363,7 +378,7 @@ export const PROBLEMS = [
     scaffold: "Gravity pulls harder on the heavy ball, but the heavy ball also has more mass, so it's harder to speed up. Those two effects cancel out exactly. So with no air resistance, how do their landing times compare?",
     // "Same" alone isn't enough: "the heavier ball hits the ground first since the pull is the same" is wrong.
     check: (t) => /\b(same time|at once|together|simultaneous|neither|tie|both land|equal(ly)?|same)\b/.test(t) &&
-      !/(?<!\b(?:neither|nor|not|no) (?:the )?)\b(heav(y|ier)|light(er)?)( one| ball)? (\w+ ){0,4}?(first|faster|sooner|quicker|earlier)\b/.test(t),
+      !claimsOneFirst(t),
     hints: [
       'Near Earth, gravity gives every object the same acceleration, about 9.8 m/s², if air resistance is ignored.',
       'Same acceleration and same starting height means the same speed at every moment of the fall.',

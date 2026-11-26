@@ -12,7 +12,8 @@
        so a relative stylesheet link could point to the wrong folder. */
     *, *::before, *::after { box-sizing: border-box; }
     body {
-      margin: 0; min-height: 100vh; display: grid; place-items: center;
+      margin: 0; min-height: 100vh; min-height: 100svh; display: grid; place-items: center;
+      -webkit-text-size-adjust: 100%; text-size-adjust: 100%;
       background: #0B0B0C; color: #C9CCD1;
       font-family: "Inter", system-ui, sans-serif; line-height: 1.6; padding: 24px 16px;
     }

@@ -336,3 +336,25 @@ describe('never leaks the answer while LOCKED', () => {
     }
   });
 });
+
+describe('browser compatibility', () => {
+  test('browser code avoids syntax that older phones and browsers cannot parse', async () => {
+    const { readFile } = await import('node:fs/promises');
+    // One unsupported piece of syntax stops the whole file from loading, so the chatbot would not start.
+    const rules = [
+      [/\(\?<[=!]/, 'regex lookbehind (Safari before 16.4)'],
+      [/\?\.[\w[(]/, 'optional chaining ?. (Safari before 13.4, Chrome before 80)'],
+      [/\?\?=?/, 'nullish coalescing ?? (Safari before 13.4, Chrome before 80)'],
+      [/\.at\(/, 'Array/String .at() (Safari before 15.4)'],
+      [/\breplaceAll\(/, 'replaceAll (Safari before 13.1)'],
+      [/\bObject\.hasOwn\(/, 'Object.hasOwn (Safari before 15.4)'],
+      [/\bstructuredClone\(/, 'structuredClone (Safari before 15.4)'],
+    ];
+    for (const file of ['script.js', 'tutor.js', 'config.js']) {
+      // Comments may mention these; only code counts.
+      const code = (await readFile(new URL(`../${file}`, import.meta.url), 'utf8'))
+        .split('\n').map((l) => l.replace(/^\s*\/\/.*$/, '').replace(/\s\/\/ .*$/, '')).join('\n');
+      for (const [re, what] of rules) assert.doesNotMatch(code, re, `${file} uses ${what}`);
+    }
+  });
+});

@@ -29,7 +29,13 @@
 
 *, *::before, *::after { box-sizing: border-box; }
 
-html { scroll-behavior: smooth; scroll-padding-top: 80px; }
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 80px;
+  /* Stop phones (iOS in landscape especially) from enlarging the text on their own. */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
 
 body {
   margin: 0;
@@ -68,6 +74,13 @@ a { color: var(--taupe-light); }
   white-space: nowrap; border: 0;
 }
 
+/* Focus ring. Browsers without :focus-visible (Safari before 15.4) skip the second rule and keep
+   the :focus ring; newer browsers show it for keyboard focus only. */
+:focus {
+  outline: 2px solid var(--taupe-light);
+  outline-offset: 3px;
+}
+:focus:not(:focus-visible) { outline: none; }
 :focus-visible {
   outline: 2px solid var(--taupe-light);
   outline-offset: 3px;
@@ -248,6 +261,7 @@ a { color: var(--taupe-light); }
   border-radius: 12px;
   font-size: 0.97rem;
   line-height: 1.5;
+  word-wrap: break-word; /* older browsers */
   overflow-wrap: anywhere;
   white-space: pre-wrap;
 }
@@ -358,7 +372,9 @@ a { color: var(--taupe-light); }
   border: 1px solid var(--taupe-line-2);
   color: var(--silver-1);
   font-family: var(--sans);
-  font-size: 1rem;
+  font-size: 1rem; /* 16px or more, so iPhones don't zoom in when the box is tapped */
+  -webkit-appearance: none; /* no built-in iOS inner shadow */
+  appearance: none;
 }
 .chat-form input::placeholder { color: var(--muted-1); opacity: 1; }
 .chat-form input:focus-visible { outline-offset: 1px; border-color: var(--taupe-light); }
@@ -458,6 +474,35 @@ a { color: var(--taupe-light); }
   .nav-list a { padding: 0 8px; font-size: 0.85rem; }
   .chat-form { gap: 8px; }
   .btn-send { padding: 0 16px; }
+}
+
+/* Short screens (small phones, phones held sideways): put the input right under the messages and
+   size the message area to the screen, so a student can read the reply and type without scrolling.
+   The guiding-prompt buttons move below the input. svh is the visible height on phones (100vh can
+   include the space behind the address bar); browsers without svh use the 100vh line. */
+@media (max-height: 700px) {
+  .chat-card { display: flex; flex-direction: column; }
+  .chat-form { order: 1; }
+  .guides { order: 2; }
+  .chat-log {
+    height: min(360px, calc(100vh - 150px));
+    height: min(360px, calc(100svh - 150px));
+    min-height: 140px;
+  }
+}
+@media (max-height: 520px) and (orientation: landscape) {
+  .site-header { position: static; }
+  html { scroll-padding-top: 0; }
+  .chat-log {
+    height: min(220px, calc(100vh - 140px));
+    height: min(220px, calc(100svh - 140px));
+  }
+}
+
+/* Windows high-contrast mode replaces the colours, so give bubbles and buttons visible edges. */
+@media (forced-colors: active) {
+  .msg, .pill, .btn, .suggestion, .card, .chat-card, .rule-chip { border: 1px solid CanvasText; }
+  .typing span, .status-line::before { background: CanvasText; }
 }
 
 @media (prefers-reduced-motion: reduce) {

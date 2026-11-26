@@ -8,6 +8,7 @@
   <title>Think First: an AI tutor that builds thinking</title>
   <meta name="description" content="Think First is a science and math tutor chatbot that asks students to explain their thinking before it helps. A demonstration of AI as a tutor, not an answer machine.">
   <meta name="theme-color" content="#0B0B0C">
+  <meta name="color-scheme" content="dark">
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -95,7 +96,10 @@
             </span>
           </header>
 
-          <div class="chat-log" id="chat-log" role="log" aria-live="polite" aria-relevant="additions" aria-label="Conversation with the Think-First Robot"></div>
+          <div class="chat-log" id="chat-log" role="log" aria-live="polite" aria-relevant="additions" aria-label="Conversation with the Think-First Robot">
+            <!-- Shown only when the chatbot can't start (JavaScript off, or a very old browser). script.js removes it. -->
+            <p class="msg msg-error" id="no-script">The chatbot needs JavaScript and a current browser (Chrome, Edge, Firefox or Safari from the last few years). Please turn on JavaScript or update your browser, then reload this page.</p>
+          </div>
 
           <div class="guides">
             <p class="guides-label" id="guides-label">Stuck? Try a guiding prompt:</p>
