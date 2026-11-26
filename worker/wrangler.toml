@@ -13,7 +13,7 @@ enabled = true
 # Comma-separated list of allowed browser origins (an Origin header has no path).
 # http://localhost:* is allowed only when ALLOW_LOCALHOST = "true", which belongs in
 # worker/.dev.vars for local testing, never here.
-ALLOWED_ORIGINS = "https://salhemamalik29-hub.github.io"
+ALLOWED_ORIGINS = "https://aibestpractices.github.io"
 
 # Cloudflare's rate limiter: 20 requests per minute per IP, counted across Worker
 # instances (the in-memory limiter in index.js is only the fallback).

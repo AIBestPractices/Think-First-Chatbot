@@ -351,3 +351,12 @@ Prompts: 42. Automatic-check failures: 0.
   - **Robot** (gated: refusal, no tutor call): I can't hand over the answer yet. Tell me how you would start: what do you already know about this?
   - Check: pass
 
+
+## 8. New address (2026-11-25)
+
+The GitHub account was renamed to `AIBestPractices`, so the site moved to `https://aibestpractices.github.io/Think-First-Chatbot/`. The Worker's `ALLOWED_ORIGINS` was changed to `https://aibestpractices.github.io` and redeployed (version `4f1e3dd4`). The earlier checks above that name `https://salhemamalik29-hub.github.io` were run before the move.
+
+| Check | Result |
+|---|---|
+| POST from `https://aibestpractices.github.io` | 200 |
+| POST from the old `https://salhemamalik29-hub.github.io` | 403 |
