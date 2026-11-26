@@ -60,6 +60,7 @@ Anthropic Messages API (Claude Haiku 5.5)
 - Rate limit: 20 requests per minute per IP. Each request must pass two limiters: an exact in-memory count (within one Worker instance) and Cloudflare's rate limiting binding (`RATE_LIMITER` in `wrangler.toml`, which spans instances but is approximate). A browser tab is held to about 20 (measured: 20–22); a script opening a new connection per request can get more through, so the spend limit stays the hard cap.
 - Each model request has a 14-second deadline (both calls together), so the Worker stops paying once the browser has given up.
 - Oversized (over 64 KB) or malformed requests get a clean JSON error.
+- If the model call fails, the Worker returns a 502 with a short reason and a plain message: `timeout` (took too long), `unreachable`, `busy` (Anthropic overloaded or rate-limited), `setup` (for example a missing or wrong key) or `upstream` (any other error). It never includes the key or the model API's own error details.
 - Worker logs are kept in the Cloudflare dashboard (`[observability]` in `wrangler.toml`). The Worker's own log lines contain only error status codes, never chat messages or keys; Cloudflare also records basic request details for each call (time, status, duration).
 
 ### Safety in the page

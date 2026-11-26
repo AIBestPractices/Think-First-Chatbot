@@ -180,11 +180,28 @@ export function createRateLimiter({ max, windowMs } = RATE_LIMIT, now = () => Da
 // ---------------------------------------------------------------------------
 
 export class ModelError extends Error {
-  constructor(status, message) {
+  constructor(status, message, reason) {
     super(message || `Model API error ${status}`);
     this.status = status;
+    this.reason = reason || reasonForStatus(status);
   }
 }
+
+/** Groups a model API status into a reason the student-facing error can name (no internal details). */
+export function reasonForStatus(status) {
+  if (status === 429 || status === 529) return 'busy';
+  if (status === 400 || status === 401 || status === 403 || status === 404) return 'setup';
+  return 'upstream';
+}
+
+// One clear message per failure reason. All are sent with status 502, so the page falls back to practice mode.
+export const MODEL_ERRORS = {
+  timeout: 'The AI tutor took too long to answer. Please try again in a minute.',
+  unreachable: 'The AI tutor could not be reached. Please try again in a minute.',
+  busy: 'The AI tutor is busy right now. Please try again in a minute.',
+  setup: 'The AI tutor is not set up correctly right now. The site owner needs to check it.',
+  upstream: 'The AI tutor is having a problem right now. Please try again in a minute.',
+};
 
 export async function callModel(fetchFn, apiKey, body, signal) {
   let res;
@@ -200,7 +217,9 @@ export async function callModel(fetchFn, apiKey, body, signal) {
       signal,
     });
   } catch {
-    throw new ModelError(0, signal?.aborted ? 'The model API took too long.' : 'Could not reach the model API.');
+    throw signal?.aborted
+      ? new ModelError(0, 'The model API took too long.', 'timeout')
+      : new ModelError(0, 'Could not reach the model API.', 'unreachable');
   }
   if (!res.ok) {
     let type = '';
@@ -402,8 +421,9 @@ export async function handleRequest(request, env = {}, deps = {}) {
     const result = await handleChat(messages, { fetchFn, apiKey: env.ANTHROPIC_API_KEY, signal });
     return json(result, 200, cors);
   } catch (err) {
-    // Log only the status, never request contents or keys.
-    console.error('model call failed', err instanceof ModelError ? err.status : 'unknown');
-    return json({ error: 'The AI model is unavailable right now.' }, 502, cors);
+    // Log only the status and reason, never request contents or keys.
+    const reason = err instanceof ModelError ? err.reason : 'upstream';
+    console.error('model call failed', err instanceof ModelError ? err.status : 'unknown', reason);
+    return json({ error: MODEL_ERRORS[reason], reason }, 502, cors);
   }
 }

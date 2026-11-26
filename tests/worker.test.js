@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   handleRequest, handleChat, parseGate, trimHistory, validateBody, isAllowedOrigin,
   createRateLimiter, pickRefusal, REFUSALS, MODEL, MAX_CHARS, MAX_ASSISTANT_CHARS, TUTOR_MAX_TOKENS, API_URL,
-  MAX_BODY_BYTES, transcriptFor, trimToSentence, runTutor, parseTutor, GATE_PROMPT, RECHECK_REPLY,
+  MAX_BODY_BYTES, transcriptFor, trimToSentence, runTutor, parseTutor, GATE_PROMPT, RECHECK_REPLY, MODEL_ERRORS,
 } from '../worker/chat.js';
 
 const ENV = { ANTHROPIC_API_KEY: 'test-key-not-real', ALLOWED_ORIGINS: 'https://student.github.io' };
@@ -107,6 +107,7 @@ describe('gate', () => {
     const started = Date.now();
     const res = await handleRequest(req(ask('hi')), ENV, { fetchFn: slow, limiter: unlimited, deadlineMs: 50 });
     assert.equal(res.status, 502);
+    assert.deepEqual(await res.json(), { error: MODEL_ERRORS.timeout, reason: 'timeout' });
     assert.ok(Date.now() - started < 2000);
     assert.ok(signals[0] instanceof AbortSignal);
   });
@@ -277,6 +278,23 @@ describe('request validation', () => {
     assert.equal(res.status, 502);
     const text = await res.text();
     assert.doesNotMatch(text, /test-key-not-real/);
+    assert.deepEqual(JSON.parse(text), { error: MODEL_ERRORS.busy, reason: 'busy' });
+
+    // Each kind of failure gets its own clear message, always as a 502 with no internal details.
+    const cases = [
+      [mockModel({ status: 429 }).fetchFn, 'busy'],
+      [mockModel({ status: 401 }).fetchFn, 'setup'],
+      [mockModel({ status: 404 }).fetchFn, 'setup'],
+      [mockModel({ status: 500 }).fetchFn, 'upstream'],
+      [async () => { throw new TypeError('network down'); }, 'unreachable'],
+    ];
+    for (const [fetchFn, reason] of cases) {
+      const r = await handleRequest(req(ask('hi')), ENV, { fetchFn, limiter: unlimited });
+      assert.equal(r.status, 502, reason);
+      const body = await r.json();
+      assert.deepEqual(body, { error: MODEL_ERRORS[reason], reason }, reason);
+      assert.doesNotMatch(JSON.stringify(body), /test-key-not-real|network down|api\.anthropic|Model API/, reason);
+    }
   });
 });
 
