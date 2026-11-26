@@ -9,7 +9,6 @@ const MAX_CHARS = 1000;
 const HISTORY_SENT = 20; // the Worker's gate reads up to 20 messages; the tutor reads the last 10
 const GREETING =
   "Hi, I'm the Think-First Robot. Ask me a science or math question. Before I help, I'll ask you to explain how you'd approach it.";
-const STATUS_AI = 'Powered by an AI model (Claude)';
 const STATUS_PRACTICE = 'Practice mode: built-in problems';
 
 const log = document.getElementById('chat-log');
@@ -30,10 +29,11 @@ const state = {
   busy: false,
 };
 
+/** The status line only appears in practice mode; in AI mode it is hidden and empty. */
 function setStatus() {
   const ai = state.mode === 'ai';
-  statusLine.textContent = ai ? STATUS_AI : STATUS_PRACTICE;
-  statusLine.classList.toggle('is-ai', ai);
+  statusLine.textContent = ai ? '' : STATUS_PRACTICE;
+  statusLine.hidden = ai;
 }
 
 function scrollToEnd() {

@@ -378,7 +378,7 @@ a { color: var(--taupe-light); }
   border-radius: 50%;
   background: var(--taupe);
 }
-.status-line.is-ai::before { background: var(--silver-2); }
+.status-line[hidden] { display: none; }
 
 /* ---------- Sections ---------- */
 .how, .why {

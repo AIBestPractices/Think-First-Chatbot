@@ -37,7 +37,7 @@ Anthropic Messages API (Claude Haiku 5.5)
 
 - **GitHub Pages** hosts the site: plain HTML, CSS and JavaScript, no build step. Pages is static and can't keep secrets, so the site never holds the API key.
 - **The Cloudflare Worker** (`worker/`) holds the key and calls Claude. The "think first" rule is enforced in code: a small classifier call decides whether the student has explained their thinking. If not, the Worker returns a refusal **without calling the tutor model at all**. Malformed classifier output counts as "not allowed".
-- **Fallback:** if the Worker URL is empty, unreachable, errors, or takes more than 15 seconds, the browser switches to a built-in scripted tutor (`tutor.js`) with 9 practice problems. After an outage it tries the AI again on the first message sent a minute or more later. The status line under the chat says which mode is active.
+- **Fallback:** if the Worker URL is empty, unreachable, errors, or takes more than 15 seconds, the browser switches to a built-in scripted tutor (`tutor.js`) with 9 practice problems. After an outage it tries the AI again on the first message sent a minute or more later. In practice mode a line under the chat says so; in AI mode that line is hidden.
 
 ### Files
 
